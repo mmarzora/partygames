@@ -29,7 +29,7 @@ export default function HowItWorksModal({ open, onClose }: HowItWorksModalProps)
           <div>
             <h3 className="font-semibold text-lg mb-1">🎯 Dibujo con Objetivo Secreto</h3>
             <p>
-              A cada jugador se le asigna un objetivo especial para su dibujo (por ejemplo, "dibuja como si fueras un niño de 5 años" o "al estilo meme"). Los demás deben adivinar cuál era el objetivo secreto del dibujo. ¡Creatividad al máximo!
+              A cada jugador se le asigna un objetivo especial para su dibujo (por ejemplo, &quot;dibuja como si fueras un niño de 5 años&quot; o &quot;al estilo meme&quot;). Los demás deben adivinar cuál era el objetivo secreto del dibujo. ¡Creatividad al máximo!
             </p>
           </div>
         </div>
