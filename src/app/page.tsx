@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import HowItWorksModal from '../components/HowItWorksModal';
 
 export default function Home() {
   const [sessionCode, setSessionCode] = useState('');
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const router = useRouter();
 
   const handleCreateSession = () => {
@@ -19,11 +21,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center p-4">
+      <HowItWorksModal open={showHowItWorks} onClose={() => setShowHowItWorks(false)} />
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">🎨 Party Games</h1>
           <p className="text-gray-800">Juegos de dibujo para jugar en grupo</p>
         </div>
+        <button
+          onClick={() => setShowHowItWorks(true)}
+          className="mb-6 w-full bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-xl hover:bg-gray-200 transition-all duration-200 shadow"
+        >
+          ¿Cómo funciona?
+        </button>
 
         <div className="space-y-4">
           <button
