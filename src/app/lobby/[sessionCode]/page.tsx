@@ -289,6 +289,16 @@ export default function LobbyPage() {
               <p>📝 Dibuja tu opción seleccionada en papel</p>
               <p>⏰ Tienes todo el tiempo que necesites</p>
               <p>🎯 ¡Que comience la diversión!</p>
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+                <p className="font-semibold mb-1">¿Cómo sigue la ronda?</p>
+                <ol className="list-decimal list-inside text-left">
+                  <li>Cada jugador dibuja su frase en papel.</li>
+                  <li>Pasa el dibujo al siguiente jugador (en círculo).</li>
+                  <li>El siguiente jugador intenta adivinar la frase solo viendo el dibujo y la escribe.</li>
+                  <li>Se repite: alterna dibujo y frase hasta terminar la ronda.</li>
+                  <li>¡Al final, revelen la cadena completa y ríanse con los resultados!</li>
+                </ol>
+              </div>
             </div>
 
             <div className="mt-6 bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
@@ -362,6 +372,14 @@ export default function LobbyPage() {
               <p>📝 Dibuja tu opción seleccionada en papel, ¡pero siguiendo tu objetivo secreto!</p>
               <p>⏰ Tienes todo el tiempo que necesites</p>
               <p>🎯 ¡Que comience la diversión!</p>
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+                <p className="font-semibold mb-1">¿Cómo sigue la ronda?</p>
+                <ol className="list-decimal list-inside text-left">
+                  <li>Cada jugador dibuja su opción en papel, siguiendo su objetivo secreto.</li>
+                  <li>Los demás intentan adivinar cuál era el objetivo secreto del dibujo.</li>
+                  <li>¡Comparen respuestas y vean quién adivinó mejor!</li>
+                </ol>
+              </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
               <p><span className="font-medium">Jugadores:</span> {players.length}</p>
