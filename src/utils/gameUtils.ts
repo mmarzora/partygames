@@ -63,7 +63,8 @@ export const GAME_THEMES = [
   'Tecnología',
   'Viajes',
   'Historia',
-  'Arte'
+  'Arte',
+  'Países del mundo'
 ];
 
 export const GAME_TYPES = [
