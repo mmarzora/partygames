@@ -15,17 +15,19 @@ import { LEGACY_PHONE_EXAMPLES, LEGACY_DRAWING_EXAMPLES } from '@/data/mockData'
 export async function generateCards(
   gameType: 'telefono' | 'dibujo',
   theme: string,
-  players: Player[]
-): Promise<GameCard[]> {
-  // Por ahora usamos las funciones locales en lugar de OpenAI
-  
+  players: Player[],
+  usedOptions: string[] = []
+): Promise<{ cards: GameCard[], newUsedOptions: string[] }> {
+  let cards: GameCard[] = [];
   if (gameType === 'telefono') {
-    // Para teléfono descompuesto, pasamos el theme (aunque por ahora se ignore)
-    return generatePhoneCards(players, theme);
+    cards = generatePhoneCards(players, theme, usedOptions);
   } else {
-    // Para dibujo con objetivo, usamos el theme seleccionado
-    return generateDrawingCards(players, theme);
+    cards = generateDrawingCards(players, theme, usedOptions);
   }
+  // Calcular el nuevo historial de frases usadas
+  const allOptions = cards.flatMap(card => card.options);
+  const newUsedOptions = [...usedOptions, ...allOptions];
+  return { cards, newUsedOptions };
 }
 
 // ===== FUNCIONES PARA CUANDO IMPLEMENTEMOS OPENAI =====

@@ -8,7 +8,8 @@ import {
   addHostAsPlayer, 
   subscribeToSession, 
   startGame,
-  generatePlayerId 
+  generatePlayerId,
+  getGameSession
 } from '@/utils/firebaseOperations';
 import { generateCards } from '@/utils/openai';
 
@@ -103,11 +104,18 @@ export default function HostPage() {
     try {
       // Generar cartas para el juego
       const finalTheme = theme === 'custom' ? customTheme : theme;
-      const cards = await generateCards(gameType, finalTheme, players);
-      
-      // Iniciar juego en Firebase
-      await startGame(sessionCode, cards);
-      
+      // Obtener el historial de frases usadas de la sesión (si existe)
+      let usedOptions: string[] = [];
+      if (sessionCode) {
+        const session = await getGameSession(sessionCode);
+        if (session && session.usedOptions) {
+          usedOptions = session.usedOptions;
+        }
+      }
+      // Generar cartas y nuevo historial
+      const { cards, newUsedOptions } = await generateCards(gameType, finalTheme, players, usedOptions);
+      // Iniciar juego en Firebase con el historial actualizado
+      await startGame(sessionCode, cards, newUsedOptions);
       // Redirigir al lobby (el useEffect detectará el cambio)
     } catch (err) {
       console.error('Error starting game:', err);
@@ -209,7 +217,7 @@ export default function HostPage() {
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-3">Tipo de juego:</label>
             <div className="space-y-2">
-              {GAME_TYPES.map((type) => (
+              {GAME_TYPES.map((type: { id: string; name: string; description: string }) => (
                 <label key={type.id} className="flex items-start space-x-3 cursor-pointer">
                   <input
                     type="radio"
@@ -236,7 +244,7 @@ export default function HostPage() {
               )}
             </label>
             <div className="space-y-2">
-              {GAME_THEMES.map((themeOption) => (
+              {GAME_THEMES.map((themeOption: string) => (
                 <label key={themeOption} className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="radio"

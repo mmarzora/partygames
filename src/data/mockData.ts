@@ -308,6 +308,33 @@ export const MOCK_DATA_BY_THEME = {
     "Israel",
     "Arabia Saudita",
     "Tailandia"
+  ],
+  'Argentina': [
+    "Messi levantando la Copa del Mundo",
+    "Un colectivo lleno en hora pico",
+    "Un asado con amigos en la terraza",
+    "Un mate rebalsado de yerba",
+    "Un perro en la vereda de Buenos Aires",
+    "Un hincha gritando un gol en la cancha",
+    "Un semáforo en rojo y todos cruzando igual",
+    "Un kiosquero vendiendo figuritas del mundial",
+    "Un gaucho en la pampa con su caballo",
+    "Una pareja bailando tango en San Telmo",
+    "Un obelisco vestido de celeste y blanco",
+    "Un choripán en la costanera",
+    "Un colectivo que no para aunque le hagas señas",
+    "Un nene jugando a la pelota en la calle",
+    "Una abuela haciendo ñoquis el 29",
+    "Un político prometiendo el dólar a $1",
+    "Un turista sacándose foto con Mafalda",
+    "Un remisero escuchando cumbia villera",
+    "Un hincha de Boca y uno de River discutiendo",
+    "Un delivery en bicicleta esquivando autos",
+    "Un perro paseador con 10 perros",
+    "Un globo de piñata en un cumple infantil",
+    "Un alfajor desarmándose al comerlo",
+    "Un colectivo con la leyenda 'Fuera de Servicio'",
+    "Un vendedor ambulante en el tren"
   ]
 };
 
@@ -375,15 +402,16 @@ export function generateMockDrawingObjectives(theme: string, count: number): str
  * Genera cartas de teléfono descompuesto con opciones basadas en tema
  * TODO: Reemplazar con llamada a OpenAI que genere opciones basadas en el tema
  */
-export function generateMockPhoneCards(playerCount: number, theme: string = 'Películas'): Array<[string, string, string]> {
-  // Obtener suficientes opciones únicas
-  let allOptions = generateMockOptionsByTheme(theme, playerCount * 3);
+export function generateMockPhoneCards(playerCount: number, theme: string = 'Películas', usedOptions: string[] = []): Array<[string, string, string]> {
+  // Obtener suficientes opciones únicas que no estén en usedOptions
+  const themeData = MOCK_DATA_BY_THEME[theme as keyof typeof MOCK_DATA_BY_THEME] || MOCK_DATA_BY_THEME['Películas'];
+  const availableOptions = themeData.filter(opt => !usedOptions.includes(opt));
+  let allOptions = availableOptions.sort(() => Math.random() - 0.5).slice(0, playerCount * 3);
   // Si no hay suficientes opciones únicas, repetir aleatoriamente pero sin duplicar en la misma carta
   if (allOptions.length < playerCount * 3) {
-    const themeData = MOCK_DATA_BY_THEME[theme as keyof typeof MOCK_DATA_BY_THEME] || MOCK_DATA_BY_THEME['Películas'];
     while (allOptions.length < playerCount * 3) {
       // Mezclar y agregar más opciones, evitando duplicados
-      const extra = [...themeData].sort(() => Math.random() - 0.5).filter(opt => !allOptions.includes(opt));
+      const extra = themeData.sort(() => Math.random() - 0.5).filter(opt => !allOptions.includes(opt));
       allOptions = allOptions.concat(extra);
       if (extra.length === 0) break; // No hay más opciones únicas
     }

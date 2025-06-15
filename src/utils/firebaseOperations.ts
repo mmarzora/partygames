@@ -128,11 +128,12 @@ export async function addHostAsPlayer(
 /**
  * Iniciar el juego (cambiar estado a 'playing')
  */
-export async function startGame(sessionCode: string, cards: GameCard[]): Promise<void> {
+export async function startGame(sessionCode: string, cards: GameCard[], usedOptions: string[]): Promise<void> {
   await updateDoc(doc(db, SESSIONS_COLLECTION, sessionCode), {
     status: 'playing',
     cards: cards,
-    currentRound: 1
+    currentRound: 1,
+    usedOptions: usedOptions
   });
 }
 
