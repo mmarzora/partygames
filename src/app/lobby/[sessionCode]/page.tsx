@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { generatePlayerName, GameSession, Player, PhoneGameCard, DrawingGameCard } from '@/utils/gameUtils';
+import { generatePlayerName, GameSession, Player, PhoneGameCard, DrawingGameCard, GAME_THEMES, generatePhoneCards } from '@/utils/gameUtils';
 import { 
   getGameSession, 
   joinGameSession, 
   subscribeToSession,
   generatePlayerId,
-  leaveSession
+  leaveSession,
+  startNewRound
 } from '@/utils/firebaseOperations';
-import { generateMockPhoneCards, MOCK_DRAWING_OBJECTIVES } from '@/data/mockData';
+import { MOCK_DRAWING_OBJECTIVES } from '@/data/mockData';
 
 export default function LobbyPage() {
   const params = useParams();
@@ -34,6 +35,10 @@ export default function LobbyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [showNewRoundModal, setShowNewRoundModal] = useState(false);
+  const [newRoundTheme, setNewRoundTheme] = useState<string>('');
+  const [newRoundLoading, setNewRoundLoading] = useState(false);
+  const isHost = sessionData?.players.find(p => p.id === playerId)?.isHost;
 
   const getPlayerCard = useCallback((session: GameSession): PhoneGameCard | DrawingGameCard | null => {
     if (!session.cards) return null;
@@ -114,16 +119,17 @@ export default function LobbyPage() {
       setSessionData(session);
       setPlayers(session.players);
 
-      // Si el juego empezó, mostrar la carta
-      if (session.status === 'playing' && !gameStarted) {
+      // Si el juego está en curso, siempre actualizar la carta y el estado de ronda
+      if (session.status === 'playing') {
         setGameStarted(true);
         const card = getPlayerCard(session);
         setPlayerCard(card);
+        setSelectedOption(''); // Resetear selección al cambiar de ronda
       }
     });
 
     return () => unsubscribe();
-  }, [isJoined, sessionCode, gameStarted, getPlayerCard]);
+  }, [isJoined, sessionCode, getPlayerCard]);
 
   // Limpiar al salir
   useEffect(() => {
@@ -163,20 +169,23 @@ export default function LobbyPage() {
   const regenerateLocalCard = () => {
     if (!sessionData || !players.length) return;
 
+    const usedOptions = sessionData.usedOptions || [];
+    console.log('usedOptions al regenerar carta:', usedOptions);
+
     if (sessionData.gameType === 'telefono') {
       // Generar una nueva carta de teléfono descompuesto solo para este jugador
-      const allCards = generateMockPhoneCards(players.length, sessionData.theme);
+      const allCards = generatePhoneCards(players, sessionData.theme, usedOptions);
       const idx = players.findIndex(p => p.id === playerId);
       if (idx !== -1) {
         setPlayerCard({
           id: `card_${playerId}`,
           playerId,
-          options: allCards[idx],
+          options: allCards[idx].options,
           type: 'phone'
         });
       }
     } else if (sessionData.gameType === 'dibujo') {
-      const allCards = generateMockPhoneCards(players.length, sessionData.theme);
+      const allCards = generatePhoneCards(players, sessionData.theme, usedOptions);
       let idx = players.findIndex(p => p.id === playerId);
       console.log('DEBUG regenerateLocalCard:', { players, playerId, idx });
       if (idx === -1) {
@@ -187,7 +196,7 @@ export default function LobbyPage() {
       setPlayerCard({
         id: `card_${playerId}`,
         playerId,
-        options: allCards[idx],
+        options: allCards[idx].options,
         content: sessionData.theme,
         objective: shuffled[0],
         type: 'drawing'
@@ -195,6 +204,53 @@ export default function LobbyPage() {
     }
     setSelectedOption('');
   };
+
+  // El modal debe ir dentro del componente, antes del return final
+  let newRoundModal = null;
+  if (showNewRoundModal) {
+    newRoundModal = (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-xs text-center">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">Selecciona el tema</h2>
+          <select
+            className="w-full p-3 rounded-xl border border-gray-300 mb-4 text-gray-800"
+            value={newRoundTheme}
+            onChange={e => setNewRoundTheme(e.target.value)}
+          >
+            {GAME_THEMES.map(theme => (
+              <option key={theme} value={theme}>{theme}</option>
+            ))}
+          </select>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={async () => {
+                setNewRoundLoading(true);
+                await startNewRound(
+                  sessionCode,
+                  newRoundTheme,
+                  sessionData?.gameType || 'telefono',
+                  players,
+                  sessionData?.usedOptions || []
+                );
+                setShowNewRoundModal(false);
+                setNewRoundLoading(false);
+              }}
+              disabled={newRoundLoading}
+              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200 disabled:opacity-50"
+            >
+              {newRoundLoading ? 'Generando...' : 'Confirmar'}
+            </button>
+            <button
+              onClick={() => setShowNewRoundModal(false)}
+              className="w-full bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-xl hover:bg-gray-300 transition-all duration-200"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -250,98 +306,26 @@ export default function LobbyPage() {
     if (playerCard.type === 'phone') {
       const phoneCard = playerCard as PhoneGameCard;
       return (
-        <div className="min-h-screen bg-gradient-to-br from-green-600 via-teal-600 to-blue-500 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">🎬 Tu Carta</h1>
-              <p className="text-gray-800">Elige una opción para dibujar</p>
-            </div>
-            
-            <div className="space-y-3 mb-6">
-              {phoneCard.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleOptionSelect(option)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                    selectedOption === option
-                      ? 'border-blue-500 bg-blue-50 text-blue-800'
-                      : 'border-gray-200 bg-gray-50 hover:border-gray-300 text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <span className="font-bold text-lg mr-3 text-blue-600">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <span className="font-medium text-gray-800">{option}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {selectedOption && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                <h3 className="font-semibold text-green-800 mb-2">✅ Opción seleccionada:</h3>
-                <p className="text-green-700 font-medium">&ldquo;{selectedOption}&rdquo;</p>
+        <>
+          {newRoundModal}
+          <div className="min-h-screen bg-gradient-to-br from-green-600 via-teal-600 to-blue-500 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+              <div className="text-center mb-4">
+                <h1 className="text-2xl font-bold text-gray-800 mb-1">🎬 Tu Carta</h1>
+                <div className="text-sm text-gray-700 font-medium flex items-center justify-center gap-2 mb-1">
+                  <span>👤 {playerName}</span>
+                  {sessionData?.currentRound && (
+                    <span>· 🔵 Ronda {sessionData.currentRound}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">Elige una opción para dibujar</p>
               </div>
-            )}
-            
-            <div className="text-sm text-gray-800 space-y-2 text-center">
-              <p>📝 Dibuja tu opción seleccionada en papel</p>
-              <p>⏰ Tienes todo el tiempo que necesites</p>
-              <p>🎯 ¡Que comience la diversión!</p>
-              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
-                <p className="font-semibold mb-1">¿Cómo sigue la ronda?</p>
-                <ol className="list-decimal list-inside text-left">
-                  <li>Cada jugador dibuja su frase en papel.</li>
-                  <li>Pasa el dibujo al siguiente jugador (en círculo).</li>
-                  <li>El siguiente jugador intenta adivinar la frase solo viendo el dibujo y la escribe.</li>
-                  <li>Se repite: alterna dibujo y frase hasta terminar la ronda.</li>
-                  <li>¡Al final, revelen la cadena completa y ríanse con los resultados!</li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="mt-6 bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
-              <p><span className="font-medium">Jugadores:</span> {players.length}</p>
-              <p><span className="font-medium">Tipo:</span> Teléfono descompuesto</p>
-              <p><span className="font-medium">Tema:</span> {sessionData?.theme}</p>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3">
-              <button
-                onClick={regenerateLocalCard}
-                className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200"
-              >
-                🔄 Nueva carta
-              </button>
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem('playerId_' + sessionCode);
-                  }
-                  router.push('/');
-                }}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
-              >
-                🏠 Volver al inicio
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    } else {
-      const drawingCard = playerCard as DrawingGameCard;
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-green-600 via-teal-600 to-blue-500 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">🎨 ¡Juego Iniciado!</h1>
-            <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Elige qué dibujar:</h2>
+              
               <div className="space-y-3 mb-6">
-                {drawingCard.options.map((option, index) => (
+                {phoneCard.options.map((option, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedOption(option)}
+                    onClick={() => handleOptionSelect(option)}
                     className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                       selectedOption === option
                         ? 'border-blue-500 bg-blue-50 text-blue-800'
@@ -357,56 +341,187 @@ export default function LobbyPage() {
                   </button>
                 ))}
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                {selectedOption && (
-                  <>
-                    <h3 className="font-semibold text-green-800 mb-2">✅ Opción seleccionada:</h3>
-                    <p className="text-green-700 font-medium">&ldquo;{selectedOption}&rdquo;</p>
-                  </>
-                )}
-                <h4 className="font-semibold text-blue-800 mt-4 mb-1">🎯 Tu objetivo secreto:</h4>
-                <p className="text-blue-700 font-medium">{drawingCard.objective}</p>
+
+              {selectedOption && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                  <h3 className="font-semibold text-green-800 mb-2">✅ Opción seleccionada:</h3>
+                  <p className="text-green-700 font-medium">&ldquo;{selectedOption}&rdquo;</p>
+                </div>
+              )}
+              
+              <div className="text-sm text-gray-800 space-y-2 text-center">
+                <p>📝 Dibuja tu opción seleccionada en papel</p>
+                <p>⏰ Tienes todo el tiempo que necesites</p>
+                <p>🎯 ¡Que comience la diversión!</p>
               </div>
-            </div>
-            <div className="text-sm text-gray-800 space-y-2 mb-6">
-              <p>📝 Dibuja tu opción seleccionada en papel, ¡pero siguiendo tu objetivo secreto!</p>
-              <p>⏰ Tienes todo el tiempo que necesites</p>
-              <p>🎯 ¡Que comience la diversión!</p>
-              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+
+              <div className="mt-8 flex flex-col gap-3">
+                <button
+                  onClick={regenerateLocalCard}
+                  className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200"
+                >
+                  🔄 Nueva carta
+                </button>
+                {isHost && (
+                  <button
+                    onClick={() => {
+                      setNewRoundTheme(sessionData?.theme || '');
+                      setShowNewRoundModal(true);
+                    }}
+                    className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200"
+                  >
+                    ➕ Nueva ronda
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('playerId_' + sessionCode);
+                    }
+                    router.push('/');
+                  }}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
+                >
+                  🏠 Volver al inicio
+                </button>
+              </div>
+
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
                 <p className="font-semibold mb-1">¿Cómo sigue la ronda?</p>
-                <ol className="list-decimal list-inside text-left">
-                  <li>Cada jugador dibuja su opción en papel, siguiendo su objetivo secreto.</li>
-                  <li>Los demás intentan adivinar cuál era el objetivo secreto del dibujo.</li>
-                  <li>¡Comparen respuestas y vean quién adivinó mejor!</li>
+                <ol className="list-decimal list-inside text-left space-y-1 pl-2">
+                  <li>Cada jugador dibuja su frase en papel.</li>
+                  <li>Pasa el dibujo al siguiente jugador (en círculo).</li>
+                  <li>El siguiente jugador intenta adivinar la frase solo viendo el dibujo y la escribe.</li>
+                  <li>Se repite: alterna dibujo y frase hasta terminar la ronda.</li>
+                  <li>¡Al final, revelen la cadena completa y ríanse con los resultados!</li>
                 </ol>
               </div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
-              <p><span className="font-medium">Jugadores:</span> {players.length}</p>
-              <p><span className="font-medium">Tema:</span> {sessionData?.theme}</p>
-              <p><span className="font-medium">Tipo:</span> Dibujo con objetivo secreto</p>
-            </div>
-            <div className="mt-8 flex flex-col gap-3">
-              <button
-                onClick={regenerateLocalCard}
-                className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200"
-              >
-                🔄 Nueva carta
-              </button>
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem('playerId_' + sessionCode);
-                  }
-                  router.push('/');
-                }}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
-              >
-                🏠 Volver al inicio
-              </button>
+
+              <div className="mt-6 bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
+                <p><span className="font-medium">Jugadores:</span> {players.length}</p>
+                <p><span className="font-medium">Tipo:</span> Teléfono descompuesto</p>
+                <p><span className="font-medium">Tema:</span> {sessionData?.theme}</p>
+              </div>
             </div>
           </div>
-        </div>
+        </>
+      );
+    } else {
+      const drawingCard = playerCard as DrawingGameCard;
+      return (
+        <>
+          {newRoundModal}
+          <div className="min-h-screen bg-gradient-to-br from-green-600 via-teal-600 to-blue-500 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+              <h1 className="text-2xl font-bold text-gray-800 mb-1">🎨 ¡Juego Iniciado!</h1>
+              <div className="text-sm text-gray-700 font-medium flex items-center justify-center gap-2 mb-1">
+                <span>👤 {playerName}</span>
+                {sessionData?.currentRound && (
+                  <span>· 🔵 Ronda {sessionData.currentRound}</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">Elige una opción para dibujar</p>
+              <div className="bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-2">Elige qué dibujar:</h2>
+                <div className="space-y-3 mb-6">
+                  {drawingCard.options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedOption(option)}
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                        selectedOption === option
+                          ? 'border-blue-500 bg-blue-50 text-blue-800'
+                          : 'border-gray-200 bg-gray-50 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <span className="font-bold text-lg mr-3 text-blue-600">
+                          {String.fromCharCode(65 + index)}
+                        </span>
+                        <span className="font-medium text-gray-800">{option}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                  {selectedOption && (
+                    <>
+                      <h3 className="font-semibold text-green-800 mb-2">✅ Opción seleccionada:</h3>
+                      <p className="text-green-700 font-medium">&ldquo;{selectedOption}&rdquo;</p>
+                    </>
+                  )}
+                  <h4 className="font-semibold text-blue-800 mt-4 mb-1">🎯 Tu objetivo secreto:</h4>
+                  <p className="text-blue-700 font-medium">{drawingCard.objective}</p>
+                </div>
+              </div>
+              <div className="text-sm text-gray-800 space-y-2 mb-6">
+                <p>📝 Dibuja tu opción seleccionada en papel, ¡pero siguiendo tu objetivo secreto!</p>
+                <p>⏰ Tienes todo el tiempo que necesites</p>
+                <p>🎯 ¡Que comience la diversión!</p>
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+                  <p className="font-semibold mb-1">¿Cómo sigue la ronda?</p>
+                  <ol className="list-decimal list-inside text-left space-y-1 pl-2">
+                    <li>Cada jugador dibuja su opción en papel, siguiendo su objetivo secreto.</li>
+                    <li>Los demás intentan adivinar cuál era el objetivo secreto del dibujo.</li>
+                    <li>¡Comparen respuestas y vean quién adivinó mejor!</li>
+                  </ol>
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
+                <p><span className="font-medium">Jugadores:</span> {players.length}</p>
+                <p><span className="font-medium">Tema:</span> {sessionData?.theme}</p>
+                <p><span className="font-medium">Tipo:</span> Dibujo con objetivo secreto</p>
+              </div>
+              <div className="mt-8 flex flex-col gap-3">
+                <button
+                  onClick={regenerateLocalCard}
+                  className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200"
+                >
+                  🔄 Nueva carta
+                </button>
+                {isHost && (
+                  <button
+                    onClick={() => {
+                      setNewRoundTheme(sessionData?.theme || '');
+                      setShowNewRoundModal(true);
+                    }}
+                    className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-yellow-500 hover:to-yellow-700 transition-all duration-200"
+                  >
+                    ➕ Nueva ronda
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem('playerId_' + sessionCode);
+                    }
+                    router.push('/');
+                  }}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
+                >
+                  🏠 Volver al inicio
+                </button>
+              </div>
+
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+                <p className="font-semibold mb-1">¿Cómo sigue la ronda?</p>
+                <ol className="list-decimal list-inside text-left space-y-1 pl-2">
+                  <li>Cada jugador dibuja su frase en papel.</li>
+                  <li>Pasa el dibujo al siguiente jugador (en círculo).</li>
+                  <li>El siguiente jugador intenta adivinar la frase solo viendo el dibujo y la escribe.</li>
+                  <li>Se repite: alterna dibujo y frase hasta terminar la ronda.</li>
+                  <li>¡Al final, revelen la cadena completa y ríanse con los resultados!</li>
+                </ol>
+              </div>
+
+              <div className="mt-6 bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
+                <p><span className="font-medium">Jugadores:</span> {players.length}</p>
+                <p><span className="font-medium">Tipo:</span> Teléfono descompuesto</p>
+                <p><span className="font-medium">Tema:</span> {sessionData?.theme}</p>
+              </div>
+            </div>
+          </div>
+        </>
       );
     }
   }
@@ -443,7 +558,7 @@ export default function LobbyPage() {
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="Ingresa tu nombre"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
                 maxLength={20}
                 onKeyPress={(e) => e.key === 'Enter' && handleJoinSession()}
               />
@@ -480,64 +595,67 @@ export default function LobbyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">⏳ Sala de Espera</h1>
-          <div className="bg-gray-100 rounded-xl p-3 mb-4">
-            <p className="text-sm text-gray-800 mb-1">Sesión:</p>
-            <p className="text-2xl font-mono font-bold text-blue-600 tracking-wider">{sessionCode}</p>
+    <>
+      {newRoundModal}
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">⏳ Sala de Espera</h1>
+            <div className="bg-gray-100 rounded-xl p-3 mb-4">
+              <p className="text-sm text-gray-800 mb-1">Sesión:</p>
+              <p className="text-2xl font-mono font-bold text-blue-600 tracking-wider">{sessionCode}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="mb-6">
-          <h3 className="font-semibold text-gray-800 mb-2">Jugadores conectados ({players.length}):</h3>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {players.map((player) => (
-              <div 
-                key={player.id} 
-                className={`rounded-lg p-3 text-sm flex items-center justify-between ${
-                  player.id === playerId 
-                    ? 'bg-green-50 border border-green-200' 
-                    : 'bg-gray-50'
-                }`}
-              >
-                <span className={`font-medium ${player.id === playerId ? 'text-green-800' : 'text-gray-800'}`}>
-                  {player.name}
-                </span>
-                <div className="flex items-center space-x-1">
-                  {player.isHost && <span className="text-yellow-600">👑</span>}
-                  {player.id === playerId && <span className="text-green-600 text-xs">(Tú)</span>}
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-800 mb-2">Jugadores conectados ({players.length}):</h3>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {players.map((player) => (
+                <div 
+                  key={player.id} 
+                  className={`rounded-lg p-3 text-sm flex items-center justify-between ${
+                    player.id === playerId 
+                      ? 'bg-green-50 border border-green-200' 
+                      : 'bg-gray-50'
+                  }`}
+                >
+                  <span className={`font-medium ${player.id === playerId ? 'text-green-800' : 'text-gray-800'}`}>
+                    {player.name}
+                  </span>
+                  <div className="flex items-center space-x-1">
+                    {player.isHost && <span className="text-yellow-600">👑</span>}
+                    {player.id === playerId && <span className="text-green-600 text-xs">(Tú)</span>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="mb-6">
-          <h3 className="font-semibold text-gray-800 mb-2">Configuración del juego:</h3>
-          <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1 text-gray-800">
-            <p><span className="font-medium">Tipo:</span> {sessionData?.gameType === 'telefono' ? 'Teléfono descompuesto' : 'Dibujo con objetivo'}</p>
-            <p><span className="font-medium">Tema:</span> {sessionData?.gameType === 'telefono' ? 'Películas' : sessionData?.theme}</p>
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-800 mb-2">Configuración del juego:</h3>
+            <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1 text-gray-800">
+              <p><span className="font-medium">Tipo:</span> {sessionData?.gameType === 'telefono' ? 'Teléfono descompuesto' : 'Dibujo con objetivo'}</p>
+              <p><span className="font-medium">Tema:</span> {sessionData?.gameType === 'telefono' ? 'Películas' : sessionData?.theme}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="text-center text-sm text-gray-800">
-          <p>💡 Esperando a que el host inicie la partida</p>
-          <p>Mientras tanto, prepara papel y lápiz 📝</p>
+          <div className="text-center text-sm text-gray-800">
+            <p>💡 Esperando a que el host inicie la partida</p>
+            <p>Mientras tanto, prepara papel y lápiz 📝</p>
+          </div>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('playerId_' + sessionCode);
+              }
+              router.push('/');
+            }}
+            className="w-full mt-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
+          >
+            🏠 Volver al inicio
+          </button>
         </div>
-        <button
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('playerId_' + sessionCode);
-            }
-            router.push('/');
-          }}
-          className="w-full mt-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
-        >
-          🏠 Volver al inicio
-        </button>
       </div>
-    </div>
+    </>
   );
 } 

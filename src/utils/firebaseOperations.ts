@@ -195,4 +195,46 @@ export async function endSession(sessionCode: string): Promise<void> {
  */
 export function generatePlayerId(): string {
   return `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-} 
+}
+
+/**
+ * Iniciar una nueva ronda (puede cambiar el tema)
+ */
+export async function startNewRound(
+  sessionCode: string,
+  theme: string,
+  gameType: 'telefono' | 'dibujo',
+  players: Player[],
+  usedOptions: string[] = []
+): Promise<void> {
+  let cards;
+  if (gameType === 'telefono') {
+    const { generatePhoneCards } = await import('./gameUtils');
+    cards = generatePhoneCards(players, theme, usedOptions);
+  } else {
+    const { generateDrawingCards } = await import('./gameUtils');
+    cards = generateDrawingCards(players, theme, usedOptions);
+  }
+
+  // Calcular el nuevo historial de frases usadas
+  const allOptions = cards.flatMap(card => card.options);
+  const newUsedOptions = [...usedOptions, ...allOptions];
+  console.log('usedOptions al iniciar nueva ronda:', newUsedOptions);
+
+  // Obtener la sesión actual para incrementar la ronda
+  const sessionRef = doc(db, SESSIONS_COLLECTION, sessionCode);
+  const sessionDoc = await getDoc(sessionRef);
+  let currentRound = 1;
+  if (sessionDoc.exists()) {
+    const session = sessionDoc.data() as GameSession;
+    currentRound = (session.currentRound || 0) + 1;
+  }
+
+  await updateDoc(sessionRef, {
+    status: 'playing',
+    theme,
+    cards,
+    currentRound,
+    usedOptions: newUsedOptions
+  });
+}

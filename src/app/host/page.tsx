@@ -239,9 +239,6 @@ export default function HostPage() {
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-3">
               Tema:
-              {gameType === 'telefono' && (
-                <span className="text-sm text-blue-600 ml-2">(puedes cambiar el tema por defecto)</span>
-              )}
             </label>
             <div className="space-y-2">
               {GAME_THEMES.map((themeOption: string) => (

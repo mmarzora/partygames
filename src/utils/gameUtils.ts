@@ -1,4 +1,4 @@
-import { MOCK_DRAWING_OBJECTIVES, generateMockPhoneCards, MOCK_DATA_BY_THEME } from '@/data/mockData';
+import { MOCK_DRAWING_OBJECTIVES, generateMockPhoneCards, MOCK_DATA_BY_THEME, MOCK_DATA_RANDOM } from '@/data/mockData';
 
 export function generateSessionCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -54,9 +54,9 @@ export interface GameSession {
   usedOptions?: string[]; // Frases ya usadas en la sesión
 }
 
-export const GAME_THEMES = Object.keys(MOCK_DATA_BY_THEME).filter(
-  t => ['Películas', 'Animales', 'Países del mundo', 'Argentina'].includes(t)
-);
+export const GAME_THEMES = ['Random', ...Object.keys(MOCK_DATA_BY_THEME).filter(
+  t => ['Películas', 'Animales', 'Países del mundo', 'Argentina', 'Eventos históricos'].includes(t)
+)];
 
 export const GAME_TYPES = [
   {
@@ -77,7 +77,22 @@ export const GAME_TYPES = [
  * TODO: Cuando implementemos OpenAI, usar el theme para generar opciones temáticas
  */
 export function generatePhoneCards(players: Player[], theme: string, usedOptions: string[] = []): PhoneGameCard[] {
-  const mockCards = generateMockPhoneCards(players.length, theme, usedOptions);
+  let mockCards;
+  if (theme === 'Random') {
+    // Generar opciones random de todo el pool
+    const allOptions = MOCK_DATA_RANDOM.filter(opt => !usedOptions.includes(opt));
+    const shuffled = [...allOptions].sort(() => Math.random() - 0.5);
+    mockCards = [];
+    for (let i = 0; i < players.length; i++) {
+      mockCards.push([
+        shuffled[i * 3],
+        shuffled[i * 3 + 1],
+        shuffled[i * 3 + 2]
+      ]);
+    }
+  } else {
+    mockCards = generateMockPhoneCards(players.length, theme, usedOptions);
+  }
   return players.map((player, index) => ({
     id: `card_${player.id}`,
     playerId: player.id,
@@ -92,7 +107,21 @@ export function generatePhoneCards(players: Player[], theme: string, usedOptions
  * TODO: Cuando implementemos OpenAI, generar objetivos específicos para el theme
  */
 export function generateDrawingCards(players: Player[], theme: string, usedOptions: string[] = []): DrawingGameCard[] {
-  const mockCards = generateMockPhoneCards(players.length, theme, usedOptions);
+  let mockCards;
+  if (theme === 'Random') {
+    const allOptions = MOCK_DATA_RANDOM.filter(opt => !usedOptions.includes(opt));
+    const shuffled = [...allOptions].sort(() => Math.random() - 0.5);
+    mockCards = [];
+    for (let i = 0; i < players.length; i++) {
+      mockCards.push([
+        shuffled[i * 3],
+        shuffled[i * 3 + 1],
+        shuffled[i * 3 + 2]
+      ]);
+    }
+  } else {
+    mockCards = generateMockPhoneCards(players.length, theme, usedOptions);
+  }
   const shuffledObjectives = [...MOCK_DRAWING_OBJECTIVES].sort(() => Math.random() - 0.5);
   return players.map((player, index) => ({
     id: `card_${player.id}`,
