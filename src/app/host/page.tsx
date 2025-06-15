@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { GAME_TYPES, GAME_THEMES, Player } from '@/utils/gameUtils';
+import { GAME_TYPES } from '@/games';
+import { GAME_THEMES, Player } from '@/utils/gameUtils';
 import { 
   createGameSession, 
   addHostAsPlayer, 
@@ -16,7 +17,7 @@ import { generateCards } from '@/utils/cardGenerator';
 export default function HostPage() {
   const [sessionCode, setSessionCode] = useState('');
   const [gameType, setGameType] = useState<'telefono' | 'dibujo'>('telefono');
-  const [theme, setTheme] = useState('Películas');
+  const [theme, setTheme] = useState('Random');
   const [customTheme, setCustomTheme] = useState('');
   const [hostName, setHostName] = useState('Host');
   const [players, setPlayers] = useState<Player[]>([]);
@@ -24,6 +25,7 @@ export default function HostPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hostId] = useState(() => generatePlayerId());
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
 
   // Suscribirse a cambios de la sesión en tiempo real
@@ -47,7 +49,7 @@ export default function HostPage() {
   // Cuando cambia el tipo de juego, resetear el tema apropiadamente
   useEffect(() => {
     if (gameType === 'telefono') {
-      setTheme('Películas'); // Para teléfono descompuesto, usar Películas por defecto
+      setTheme('Random'); // Para teléfono descompuesto, usar Random por defecto
     } else {
       setTheme(''); // Para dibujo, resetear para que el usuario elija
     }
@@ -137,6 +139,36 @@ export default function HostPage() {
             <p className="text-gray-800">Comparte este código con tus amigos</p>
           </div>
 
+          {/* Link de invitación */}
+          <div className="mb-6 text-center">
+            <p className="text-gray-800 mb-2 font-medium">Comparte este link para que otros se unan a la sesión:</p>
+            <div className="flex items-center gap-2 justify-center">
+              <input
+                type="text"
+                value={typeof window !== 'undefined' ? `${window.location.origin}/lobby/${sessionCode}` : ''}
+                readOnly
+                className="w-full max-w-xs px-2 py-1 border border-gray-300 rounded font-mono text-blue-700 bg-gray-50 text-sm"
+                onFocus={e => e.target.select()}
+              />
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    navigator.clipboard.writeText(`${window.location.origin}/lobby/${sessionCode}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded transition text-sm font-semibold"
+                title="Copiar link"
+              >
+                Copiar
+              </button>
+            </div>
+            {copied && (
+              <div className="mt-2 text-green-600 text-sm font-semibold transition-opacity duration-300">¡Copiado!</div>
+            )}
+          </div>
+
           <div className="mb-6">
             <h3 className="font-semibold text-gray-800 mb-2">Configuración:</h3>
             <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-800">
@@ -209,30 +241,46 @@ export default function HostPage() {
               value={hostName}
               onChange={(e) => setHostName(e.target.value)}
               placeholder="Ingresa tu nombre"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 bg-white"
               maxLength={20}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-3">Tipo de juego:</label>
-            <div className="space-y-2">
-              {GAME_TYPES.map((type: { id: string; name: string; description: string }) => (
-                <label key={type.id} className="flex items-start space-x-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="gameType"
-                    value={type.id}
-                    checked={gameType === type.id}
-                    onChange={(e) => setGameType(e.target.value as 'telefono' | 'dibujo')}
-                    className="mt-1 text-blue-600"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-800">{type.name}</div>
-                    <div className="text-sm text-gray-600">{type.description}</div>
-                  </div>
-                </label>
-              ))}
+            <div className="flex items-center justify-center gap-4">
+              <button
+                type="button"
+                aria-label="Anterior"
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-2xl font-bold text-gray-500 transition"
+                onClick={() => {
+                  const idx = GAME_TYPES.findIndex(t => t.id === gameType);
+                  const prevIdx = (idx - 1 + GAME_TYPES.length) % GAME_TYPES.length;
+                  setGameType(GAME_TYPES[prevIdx].id as 'telefono' | 'dibujo');
+                }}
+              >
+                ←
+              </button>
+              <div className="flex flex-col items-center w-56 px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl shadow-md transition-all duration-200">
+                <div className="text-lg font-bold text-gray-800 mb-1">
+                  {GAME_TYPES.find(t => t.id === gameType)?.name}
+                </div>
+                <div className="text-sm text-gray-600 text-center">
+                  {GAME_TYPES.find(t => t.id === gameType)?.description}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Siguiente"
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-2xl font-bold text-gray-500 transition"
+                onClick={() => {
+                  const idx = GAME_TYPES.findIndex(t => t.id === gameType);
+                  const nextIdx = (idx + 1) % GAME_TYPES.length;
+                  setGameType(GAME_TYPES[nextIdx].id as 'telefono' | 'dibujo');
+                }}
+              >
+                →
+              </button>
             </div>
           </div>
 
@@ -273,26 +321,10 @@ export default function HostPage() {
                 placeholder="Ej: Películas de Studio Ghibli, Memes de internet..."
                 value={customTheme}
                 onChange={(e) => setCustomTheme(e.target.value)}
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 bg-white"
               />
             )}
           </div>
-
-          {gameType === 'telefono' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">📽️ Teléfono Descompuesto:</span> Cada jugador recibirá una carta con 3 opciones del tema seleccionado para elegir y dibujar.
-              </p>
-            </div>
-          )}
-
-          {gameType === 'dibujo' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-sm text-green-800">
-                <span className="font-medium">🎨 Dibujo con Objetivo:</span> Todos dibujarán el mismo tema, pero cada uno con un estilo diferente y secreto.
-              </p>
-            </div>
-          )}
 
           {error && (
             <div className="p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">

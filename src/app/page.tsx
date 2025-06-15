@@ -58,7 +58,7 @@ export default function Home() {
               value={sessionCode}
               onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
               maxLength={5}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-mono tracking-wider text-gray-800"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-mono tracking-wider text-gray-800 bg-white"
             />
             <button
               onClick={handleJoinSession}

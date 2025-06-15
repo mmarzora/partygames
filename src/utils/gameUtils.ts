@@ -56,17 +56,4 @@ export interface GameSession {
 
 export const GAME_THEMES = ['Random', ...Object.keys(MOCK_DATA_BY_THEME).filter(
   t => ['Películas', 'Animales', 'Países del mundo', 'Argentina', 'Eventos históricos'].includes(t)
-)];
-
-export const GAME_TYPES = [
-  {
-    id: 'telefono',
-    name: 'Teléfono descompuesto',
-    description: 'Cada jugador recibe una carta diferente con 3 opciones para elegir'
-  },
-  {
-    id: 'dibujo',
-    name: 'Dibujo con objetivo secreto',
-    description: 'Todos dibujan lo mismo, pero cada uno con un estilo diferente'
-  }
-] as const; 
+)]; 

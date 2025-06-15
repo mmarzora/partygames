@@ -152,6 +152,9 @@ export default function LobbyPage() {
 
     try {
       await joinGameSession(sessionCode, playerName, playerId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('playerId_' + sessionCode, playerId);
+      }
       setIsJoined(true);
     } catch (err: unknown) {
       console.error('Error joining session:', err);
@@ -284,7 +287,14 @@ export default function LobbyPage() {
         <>
           {newRoundModal}
           <div className="min-h-screen bg-gradient-to-br from-green-600 via-teal-600 to-blue-500 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
+              {isHost && (
+                <div className="absolute top-4 right-4 z-10 max-w-[40vw]">
+                  <span className="inline-flex items-center gap-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow border border-yellow-300 truncate">
+                    👑 Host
+                  </span>
+                </div>
+              )}
               <div className="text-center mb-4">
                 <h1 className="text-2xl font-bold text-gray-800 mb-1">🎬 Tu Carta</h1>
                 <div className="text-sm text-gray-700 font-medium flex items-center justify-center gap-2 mb-1">
@@ -533,7 +543,7 @@ export default function LobbyPage() {
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="Ingresa tu nombre"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 bg-white"
                 maxLength={20}
                 onKeyPress={(e) => e.key === 'Enter' && handleJoinSession()}
               />
@@ -573,7 +583,14 @@ export default function LobbyPage() {
     <>
       {newRoundModal}
       <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
+          {isHost && (
+            <div className="absolute top-4 right-4 z-10 max-w-[40vw]">
+              <span className="inline-flex items-center gap-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full shadow border border-yellow-300 truncate">
+                👑 Host
+              </span>
+            </div>
+          )}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">⏳ Sala de Espera</h1>
             <div className="bg-gray-100 rounded-xl p-3 mb-4">
@@ -614,9 +631,12 @@ export default function LobbyPage() {
             </div>
           </div>
 
-          <div className="text-center text-sm text-gray-800">
-            <p>💡 Esperando a que el host inicie la partida</p>
-            <p>Mientras tanto, prepara papel y lápiz 📝</p>
+          <div className="text-center text-sm text-gray-800 bg-blue-50 rounded-xl px-6 py-5 mb-6 shadow-sm border border-blue-100">
+            <p className="mb-1">💡 Esperando a que el host inicie la partida</p>
+            <p className="mb-2">Mientras tanto, prepara papel y lápiz 📝</p>
+            <div className="flex justify-center my-2">
+              <span className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-t-transparent border-blue-400"></span>
+            </div>
           </div>
           <button
             onClick={() => {
