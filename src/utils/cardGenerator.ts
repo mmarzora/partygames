@@ -5,25 +5,22 @@
 //   apiKey: process.env.OPENAI_API_KEY,
 // });
 
-import { GameCard, Player, generatePhoneCards, generateDrawingCards } from './gameUtils';
-import { LEGACY_PHONE_EXAMPLES, LEGACY_DRAWING_EXAMPLES } from '@/data/mockData';
+import { GameCard, Player } from './gameUtils';
+import { getGameTypeById } from '@/games';
 
 /**
  * Función principal para generar cartas
- * TODO: Implementar llamadas reales a OpenAI aquí
+ * Ahora usa la arquitectura modular de juegos
  */
 export async function generateCards(
-  gameType: 'telefono' | 'dibujo',
+  gameType: string,
   theme: string,
   players: Player[],
   usedOptions: string[] = []
 ): Promise<{ cards: GameCard[], newUsedOptions: string[] }> {
-  let cards: GameCard[] = [];
-  if (gameType === 'telefono') {
-    cards = generatePhoneCards(players, theme, usedOptions);
-  } else {
-    cards = generateDrawingCards(players, theme, usedOptions);
-  }
+  const game = getGameTypeById(gameType);
+  if (!game) throw new Error('Tipo de juego no soportado');
+  const cards = game.generateCards(players, theme, usedOptions);
   // Calcular el nuevo historial de frases usadas
   const allOptions = cards.flatMap(card => card.options);
   const newUsedOptions = [...usedOptions, ...allOptions];

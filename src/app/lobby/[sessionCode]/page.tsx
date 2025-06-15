@@ -12,6 +12,7 @@ import {
   startNewRound
 } from '@/utils/firebaseOperations';
 import { MOCK_DRAWING_OBJECTIVES } from '@/data/mockData';
+import { getGameTypeById } from '@/games';
 
 export default function LobbyPage() {
   const params = useParams();
@@ -168,39 +169,13 @@ export default function LobbyPage() {
 
   const regenerateLocalCard = () => {
     if (!sessionData || !players.length) return;
-
     const usedOptions = sessionData.usedOptions || [];
-    console.log('usedOptions al regenerar carta:', usedOptions);
-
-    if (sessionData.gameType === 'telefono') {
-      // Generar una nueva carta de teléfono descompuesto solo para este jugador
-      const allCards = generatePhoneCards(players, sessionData.theme, usedOptions);
-      const idx = players.findIndex(p => p.id === playerId);
-      if (idx !== -1) {
-        setPlayerCard({
-          id: `card_${playerId}`,
-          playerId,
-          options: allCards[idx].options,
-          type: 'phone'
-        });
-      }
-    } else if (sessionData.gameType === 'dibujo') {
-      const allCards = generatePhoneCards(players, sessionData.theme, usedOptions);
-      let idx = players.findIndex(p => p.id === playerId);
-      console.log('DEBUG regenerateLocalCard:', { players, playerId, idx });
-      if (idx === -1) {
-        idx = 0; // fallback: usa la primera carta
-        console.warn('Jugador no encontrado en la lista de players al regenerar carta');
-      }
-      const shuffled = [...MOCK_DRAWING_OBJECTIVES].sort(() => Math.random() - 0.5);
-      setPlayerCard({
-        id: `card_${playerId}`,
-        playerId,
-        options: allCards[idx].options,
-        content: sessionData.theme,
-        objective: shuffled[0],
-        type: 'drawing'
-      });
+    const game = getGameTypeById(sessionData.gameType);
+    if (!game) return;
+    const allCards = game.generateCards(players, sessionData.theme, usedOptions);
+    const idx = players.findIndex(p => p.id === playerId);
+    if (idx !== -1) {
+      setPlayerCard(allCards[idx]);
     }
     setSelectedOption('');
   };

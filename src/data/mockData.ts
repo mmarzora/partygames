@@ -281,9 +281,6 @@ export const MOCK_DATA_BY_THEME = {
 // Opción predeterminada: Random, que toma de todas las cartas
 export const MOCK_DATA_RANDOM = Object.values(MOCK_DATA_BY_THEME).flat();
 
-// ===== TELÉFONO DESCOMPUESTO - PELÍCULAS (LEGACY) =====
-export const MOCK_MOVIE_OPTIONS = MOCK_DATA_BY_THEME['Películas'];
-
 // ===== DIBUJO CON OBJETIVO - ESTILOS =====
 export const MOCK_DRAWING_OBJECTIVES = [
   "como si fueras un niño de 5 años",
@@ -322,14 +319,6 @@ export function generateMockOptionsByTheme(theme: string, count: number): string
   
   const shuffled = [...themeData].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
-}
-
-/**
- * Genera opciones de películas para teléfono descompuesto (LEGACY)
- * TODO: Reemplazar con llamada a OpenAI
- */
-export function generateMockMovieOptions(count: number): string[] {
-  return generateMockOptionsByTheme('Películas', count);
 }
 
 /**
@@ -372,21 +361,4 @@ export function generateMockPhoneCards(playerCount: number, theme: string = 'Pel
     ]);
   }
   return cards;
-}
-
-// ===== DATOS LEGACY (para compatibilidad) =====
-export const LEGACY_PHONE_EXAMPLES = [
-  "Una película que tu abuela amaría",
-  "El libro más aburrido del mundo",
-  "Una canción que te hace llorar",
-  "La comida más extraña que has probado",
-  "Un lugar donde nunca irías de vacaciones"
-];
-
-export const LEGACY_DRAWING_EXAMPLES = [
-  "Dibuja como si fueras un niño de 5 años",
-  "Dibuja al estilo Picasso", 
-  "Dibuja lo más triste posible",
-  "Dibuja como si fuera un meme",
-  "Dibuja con los ojos cerrados"
-]; 
+} 

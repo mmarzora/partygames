@@ -11,7 +11,7 @@ import {
   generatePlayerId,
   getGameSession
 } from '@/utils/firebaseOperations';
-import { generateCards } from '@/utils/openai';
+import { generateCards } from '@/utils/cardGenerator';
 
 export default function HostPage() {
   const [sessionCode, setSessionCode] = useState('');

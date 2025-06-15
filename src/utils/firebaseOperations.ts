@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { GameSession, Player, generateSessionCode, GameCard } from './gameUtils';
+import { getGameTypeById } from '@/games';
 
 // Colección de sesiones en Firestore
 const SESSIONS_COLLECTION = 'gameSessions';
@@ -203,19 +204,13 @@ export function generatePlayerId(): string {
 export async function startNewRound(
   sessionCode: string,
   theme: string,
-  gameType: 'telefono' | 'dibujo',
+  gameType: string,
   players: Player[],
   usedOptions: string[] = []
 ): Promise<void> {
-  let cards;
-  if (gameType === 'telefono') {
-    const { generatePhoneCards } = await import('./gameUtils');
-    cards = generatePhoneCards(players, theme, usedOptions);
-  } else {
-    const { generateDrawingCards } = await import('./gameUtils');
-    cards = generateDrawingCards(players, theme, usedOptions);
-  }
-
+  const game = getGameTypeById(gameType);
+  if (!game) throw new Error('Tipo de juego no soportado');
+  const cards = game.generateCards(players, theme, usedOptions);
   // Calcular el nuevo historial de frases usadas
   const allOptions = cards.flatMap(card => card.options);
   const newUsedOptions = [...usedOptions, ...allOptions];
