@@ -17,5 +17,20 @@ export const DibujoGame: GameType = {
       objective: shuffledObjectives[idx % shuffledObjectives.length],
       type: 'drawing'
     }));
+  },
+  getInitialState: (players) => {
+    return {
+      id: '',
+      code: '',
+      hostId: '',
+      gameType: 'dibujo',
+      theme: '',
+      status: 'waiting',
+      players: players as Player[],
+      currentRound: 1,
+      createdAt: Date.now(),
+      cards: [],
+      usedOptions: []
+    };
   }
 }; 

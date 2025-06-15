@@ -1,4 +1,4 @@
-import { MOCK_DRAWING_OBJECTIVES, generateMockPhoneCards, MOCK_DATA_BY_THEME, MOCK_DATA_RANDOM } from '@/data/mockData';
+import { MOCK_DATA_BY_THEME } from '@/data/mockData';
 
 export function generateSessionCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -50,7 +50,7 @@ export interface GameSession {
   players: Player[];
   currentRound: number;
   createdAt: number;
-  cards?: any[];
+  cards?: unknown[];
   usedOptions?: string[];
 }
 

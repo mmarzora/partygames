@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { generatePlayerName, GameSession, Player, PhoneGameCard, DrawingGameCard, GAME_THEMES, generatePhoneCards } from '@/utils/gameUtils';
+import { generatePlayerName, GameSession, Player, PhoneGameCard, DrawingGameCard, GAME_THEMES } from '@/utils/gameUtils';
 import { 
   getGameSession, 
   joinGameSession, 
@@ -11,7 +11,6 @@ import {
   leaveSession,
   startNewRound
 } from '@/utils/firebaseOperations';
-import { MOCK_DRAWING_OBJECTIVES } from '@/data/mockData';
 import { getGameTypeById } from '@/games';
 
 export default function LobbyPage() {
@@ -46,14 +45,15 @@ export default function LobbyPage() {
     
     // Buscar la carta específica del jugador
     const card = session.cards.find(c => {
-      if (c.type === 'phone') {
-        return (c as PhoneGameCard).playerId === playerId;
+      const cardTyped = c as PhoneGameCard | DrawingGameCard;
+      if (cardTyped.type === 'phone') {
+        return cardTyped.playerId === playerId;
       } else {
-        return c.id === `card_${playerId}`;
+        return cardTyped.id === `card_${playerId}`;
       }
     });
     
-    return card as PhoneGameCard | DrawingGameCard || null;
+    return (card as PhoneGameCard | DrawingGameCard) || null;
   }, [playerId]);
 
   // Verificar si el jugador actual ya está en la sesión
@@ -178,7 +178,7 @@ export default function LobbyPage() {
     const allCards = game.generateCards(players, sessionData.theme, usedOptions);
     const idx = players.findIndex(p => p.id === playerId);
     if (idx !== -1) {
-      setPlayerCard(allCards[idx]);
+      setPlayerCard(allCards[idx] as unknown as PhoneGameCard | DrawingGameCard);
     }
     setSelectedOption('');
   };

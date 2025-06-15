@@ -1,12 +1,5 @@
 // Interfaz base para un tipo de juego
-import { Player } from '@/utils/gameUtils';
-
-export interface GameCard {
-  id: string;
-  playerId: string;
-  options: string[];
-  [key: string]: any;
-}
+import { Player, GameSession, GameCard } from '@/utils/gameUtils';
 
 export interface GameType {
   id: string;
@@ -19,11 +12,12 @@ export interface GameType {
   ): GameCard[];
   calculateScores?(
     cards: GameCard[],
-    answers: any[]
+    answers: unknown[]
   ): Record<string, number>;
   validateAnswer?(
     card: GameCard,
-    answer: any
+    answer: unknown
   ): boolean;
   // renderCardComponent?: (props: any) => JSX.Element;
+  getInitialState: (players: unknown[], options?: unknown) => GameSession;
 } 

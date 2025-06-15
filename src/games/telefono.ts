@@ -14,5 +14,20 @@ export const TelefonoGame: GameType = {
       options: mockCards[idx],
       type: 'phone'
     }));
+  },
+  getInitialState: (players) => {
+    return {
+      id: '',
+      code: '',
+      hostId: '',
+      gameType: 'telefono',
+      theme: '',
+      status: 'waiting',
+      players: players as Player[],
+      currentRound: 1,
+      createdAt: Date.now(),
+      cards: [],
+      usedOptions: []
+    };
   }
 }; 

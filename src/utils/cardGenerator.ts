@@ -72,20 +72,4 @@ export async function generateDrawingObjectivesWithAI(
   // Devuelve solo los estilos, uno por línea.`;
   
   throw new Error('OpenAI no implementado aún. Usa generateCards() que usa datos mock.');
-}
-
-// ===== FUNCIONES LEGACY (mantenidas para compatibilidad) =====
-
-export async function generatePhoneCards_Legacy(theme: string, count: number = 5): Promise<string[]> {
-  // Función legacy que devuelve ejemplos genéricos
-  return LEGACY_PHONE_EXAMPLES.slice(0, count).map(example => 
-    example.replace('${theme}', theme)
-  );
-}
-
-export async function generateDrawingObjectives(theme: string, count: number = 5): Promise<string[]> {
-  // Función legacy que devuelve ejemplos genéricos
-  return LEGACY_DRAWING_EXAMPLES.slice(0, count).map(example => 
-    example.replace('${theme}', theme)
-  );
 } 
